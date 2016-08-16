@@ -2,10 +2,20 @@ package com.github.alinz.reactnativewebviewbridge;
 
 import android.webkit.WebView;
 
+import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReadableArray;
+import com.facebook.react.uimanager.annotations.ReactProp;
 import com.facebook.react.views.webview.ReactWebViewManager;
 import com.facebook.react.views.webview.WebViewConfig;
+
+import android.content.Intent;
+import android.webkit.WebChromeClient;
+import android.webkit.ValueCallback;
+import android.net.Uri;
+import android.webkit.JsPromptResult;
+import android.webkit.JsResult;
+import android.util.Log;
 
 import java.util.Map;
 
@@ -17,11 +27,13 @@ public class WebViewBridgeManager extends ReactWebViewManager {
   public static final int COMMAND_INJECT_BRIDGE_SCRIPT = 100;
   public static final int COMMAND_SEND_TO_BRIDGE = 101;
 
+  private ReactApplicationContext reactApplicationContext = null;
   private boolean initializedBridge;
 
-  public WebViewBridgeManager() {
+  public WebViewBridgeManager(ReactApplicationContext context) {
     super();
     initializedBridge = false;
+    reactApplicationContext = context;
   }
 
   public WebViewBridgeManager(WebViewConfig webViewConfig) {
@@ -94,6 +106,61 @@ public class WebViewBridgeManager extends ReactWebViewManager {
       root.evaluateJavascript(javascript, null);
     } else {
       root.loadUrl("javascript:" + javascript);
+    }
+  }
+  @ReactProp(name = "uploadEnabledAndroid")
+  public void uploadEnabledAndroid(WebView view, boolean enabled) {
+    Log.d("error", "==================== ENABLED ANDEOID UPLOAD");
+    if(enabled) {
+      view.setWebChromeClient(new WebChromeClient(){
+
+        public void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType) {
+          /* ((MainActivity)mActivity).setUploadMessage(uploadMsg); */
+          openFileChooserView();
+
+        }
+
+        public boolean onJsConfirm (WebView view, String url, String message, JsResult result){
+          return true;
+        }
+
+        public boolean onJsPrompt (WebView view, String url, String message, String defaultValue, JsPromptResult result){
+          return true;
+        }
+
+        // For Android < 3.0
+        public void openFileChooser(ValueCallback<Uri> uploadMsg) {
+          /* ((MainActivity)mActivity).setUploadMessage(uploadMsg); */
+          openFileChooserView();
+        }
+
+        // For Android  > 4.1.1
+        public void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType, String capture) {
+          /* ((MainActivity)mActivity).setUploadMessage(uploadMsg); */
+          openFileChooserView();
+        }
+
+        // For Android > 5.0
+        public boolean onShowFileChooser (WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
+          /* ((MainActivity)mActivity).setmUploadCallbackAboveL(filePathCallback); */
+          openFileChooserView();
+          return true;
+        }
+
+        private void openFileChooserView(){
+          Log.d("error", "OPEN FILE CHOOSER VIEW");
+          try {
+            final Intent galleryIntent = new Intent(Intent.ACTION_PICK);
+            galleryIntent.setType("image/*");
+            final Intent chooserIntent = Intent.createChooser(galleryIntent, "choose file");
+
+            Log.d("error", "acti:" + reactApplicationContext.hasCurrentActivity());
+            reactApplicationContext.getCurrentActivity().startActivityForResult(chooserIntent, 1);
+          } catch (Exception e) {
+            Log.d("error", e.toString());
+          }
+        }
+      });
     }
   }
 }
